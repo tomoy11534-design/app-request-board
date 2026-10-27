@@ -2,7 +2,7 @@
 
 // ===== 設定 =====
 // Google Apps Script のウェブアプリURL（docs/setup.md の手順で取得して貼り付ける）
-const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbwFZaojLYM53yKHhZ9OqOMcpno44Hx4n42OQBun6risVP985sR5aLY8F42GxpishxRBhQ/exec';
+const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycby4fNhtBGG9Zl5ac9odzbXnl_-VIwxm1A35BAJebrNfWEsV0qyOPQbTZoSKwy2WIqVfQQ/exec';
 
 const STATUSES = ['未着手', '対応中', '確認待ち', '完了'];
 const MAX_IMAGES = 6;
