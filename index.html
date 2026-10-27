@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>アプリ要望ボード</title>
+  <meta name="description" content="アプリへの要望を書き残して、それぞれのタイミングで返事をする場所">
+  <meta name="theme-color" content="#2f6b55">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="要望ボード">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ヘッダー：アプリ名、自分の名前、読み込み直し -->
+  <header class="app-header">
+    <h1 class="app-title">アプリ要望ボード</h1>
+    <div class="header-right">
+      <button class="name-button" id="name-button" type="button" aria-label="名前と合言葉を変える"></button>
+      <button class="icon-button" id="reload-button" type="button" aria-label="最新の内容を読み込む">↻</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <p class="banner" id="banner" hidden></p>
+
+    <!-- 一覧画面 -->
+    <section class="view" id="view-list">
+      <p class="lead">アプリへの要望を書き残して、それぞれの都合のいいときに返事をする場所です。</p>
+      <button class="primary-button" id="open-form" type="button">＋ 要望を書く</button>
+
+      <div class="filter-group" id="app-filter" role="group" aria-label="アプリで絞り込む"></div>
+      <div class="filter-group" id="status-filter" role="group" aria-label="状態で絞り込む"></div>
+
+      <div class="item-list" id="item-list" aria-live="polite"></div>
+    </section>
+
+    <!-- 詳細画面（やりとり） -->
+    <section class="view" id="view-detail" hidden>
+      <button class="back-button" id="back-button" type="button">‹ 一覧にもどる</button>
+      <article class="detail" id="detail"></article>
+
+      <h2 class="section-title">やりとり</h2>
+      <div class="thread" id="thread"></div>
+
+      <form class="compose" id="reply-form">
+        <label class="visually-hidden" for="reply-text">返事を書く</label>
+        <div class="input-with-mic">
+          <textarea class="text-input" id="reply-text" rows="3" maxlength="4000" placeholder="返事や質問、やってみた結果などを書く"></textarea>
+          <button class="mic-button" type="button" data-mic-for="reply-text" aria-pressed="false" aria-label="声で入力する">🎤</button>
+        </div>
+        <p class="mic-hint" data-mic-hint-for="reply-text"></p>
+        <div class="thumbs" id="reply-images"></div>
+        <div class="compose-actions">
+          <label class="secondary-button file-button">
+            📷 画像をつける
+            <input type="file" id="reply-file" accept="image/*" multiple hidden>
+          </label>
+          <button class="primary-button" id="reply-submit" type="submit">返事を送る</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <!-- 要望を書く -->
+  <dialog class="sheet" id="form-dialog" aria-labelledby="form-title">
+    <form class="compose" id="item-form" method="dialog">
+      <h2 id="form-title">要望を書く</h2>
+      <label class="field">どのアプリ？
+        <input class="text-field" type="text" id="item-app" list="app-options" maxlength="60" required placeholder="例: VoiceFix">
+        <datalist id="app-options"></datalist>
+      </label>
+      <label class="field" for="item-body">内容（どの画面で、何が、どうなってほしいか）</label>
+      <div class="input-with-mic">
+        <textarea class="text-input" id="item-body" rows="5" maxlength="4000" required placeholder="例: 送信したあと、記録の画面にすぐ切り替わってほしい"></textarea>
+        <button class="mic-button" type="button" data-mic-for="item-body" aria-pressed="false" aria-label="声で入力する">🎤</button>
+      </div>
+      <p class="mic-hint" data-mic-hint-for="item-body"></p>
+      <div class="thumbs" id="item-images"></div>
+      <label class="secondary-button file-button">
+        📷 画像をつける（6枚まで）
+        <input type="file" id="item-file" accept="image/*" multiple hidden>
+      </label>
+      <div class="compose-actions">
+        <button class="text-button" id="form-cancel" type="button">やめる</button>
+        <button class="primary-button" id="item-submit" type="submit" value="submit">書き残す</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- はじめに：名前と合言葉 -->
+  <dialog class="sheet" id="setup-dialog" aria-labelledby="setup-title">
+    <form class="compose" id="setup-form" method="dialog">
+      <h2 id="setup-title">はじめに</h2>
+      <p>やりとりの相手に見せる名前と、教えてもらった合言葉を入れてください。この端末に覚えておくので、次からは入力しなくて大丈夫です。</p>
+      <label class="field">あなたの名前
+        <input class="text-field" type="text" id="setup-name" maxlength="30" required autocomplete="nickname" placeholder="例: とも">
+      </label>
+      <label class="field">合言葉
+        <input class="text-field" type="password" id="setup-pass" maxlength="100" required autocomplete="off">
+      </label>
+      <p class="form-error" id="setup-error" role="alert"></p>
+      <div class="compose-actions">
+        <button class="text-button" id="setup-cancel" type="button" hidden>やめる</button>
+        <button class="primary-button" id="setup-submit" type="submit" value="submit">はじめる</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 画像の拡大表示 -->
+  <div class="lightbox" id="lightbox" hidden role="dialog" aria-label="画像の拡大">
+    <img id="lightbox-img" alt="添付画像の拡大">
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
