@@ -154,7 +154,6 @@ function render() {
   renderFilters();
   renderList();
   renderDetail();
-  renderAppOptions();
   const unread = state.items.filter(isUnread).length;
   document.title = unread ? `(${unread}) アプリ要望ボード` : 'アプリ要望ボード';
   $('name-button').textContent = myName() ? `👤 ${myName()}` : '👤 名前';
@@ -327,14 +326,38 @@ function statusPill(status) {
   return pill;
 }
 
-function renderAppOptions() {
-  const options = $('app-options');
-  options.innerHTML = '';
-  appNames().forEach((name) => {
-    const option = document.createElement('option');
+// 要望を書くときのアプリの選択肢（最後に「ほかのアプリ」を置く）
+const NEW_APP = '__new__';
+
+function renderAppOptions(selected) {
+  const select = $('item-app-select');
+  select.innerHTML = '';
+  const names = appNames();
+  names.forEach((name) => {
+    const option = el('option', '', name);
     option.value = name;
-    options.append(option);
+    select.append(option);
   });
+  const other = el('option', '', '＋ ほかのアプリ（名前を入れる）');
+  other.value = NEW_APP;
+  select.append(other);
+  if (names.includes(selected)) {
+    select.value = selected;
+  } else {
+    // 一覧にない名前は「ほかのアプリ」の欄に入れておく
+    select.value = names.length && !selected ? names[0] : NEW_APP;
+    $('item-app').value = selected || '';
+  }
+  toggleNewAppField();
+}
+
+function toggleNewAppField() {
+  $('item-app-new').hidden = $('item-app-select').value !== NEW_APP;
+}
+
+function formApp() {
+  const value = $('item-app-select').value;
+  return (value === NEW_APP ? $('item-app').value : value).trim();
 }
 
 // ===== 詳細画面 =====
@@ -556,7 +579,7 @@ function setBusy(button, busy, label) {
 
 async function submitItem() {
   if (sending) return;
-  const app = $('item-app').value.trim();
+  const app = formApp();
   const body = $('item-body').value.trim();
   if (!app || !body) {
     toast('アプリと内容を入れてください');
@@ -837,14 +860,19 @@ function openForm() {
   // アドレスの ?app= か、前回書いたアプリを最初から入れておく
   const fromUrl = new URLSearchParams(location.search).get('app');
   const current = state.appFilter !== 'all' ? state.appFilter : '';
-  $('item-app').value = current || fromUrl || getSetting(LAST_APP_KEY) || '';
+  $('item-app').value = '';
+  renderAppOptions(current || fromUrl || getSetting(LAST_APP_KEY) || '');
   formDialog.showModal();
-  ($('item-app').value ? $('item-body') : $('item-app')).focus();
+  ($('item-app-new').hidden ? $('item-body') : $('item-app')).focus();
 }
 
 // ===== イベント登録 =====
 function setupEvents() {
   $('open-form').addEventListener('click', openForm);
+  $('item-app-select').addEventListener('change', () => {
+    toggleNewAppField();
+    if (!$('item-app-new').hidden) $('item-app').focus();
+  });
   $('open-app-form').addEventListener('click', () => openAppForm());
   $('app-cancel').addEventListener('click', () => $('app-dialog').close());
   $('app-form').addEventListener('submit', (event) => {

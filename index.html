@@ -74,8 +74,11 @@
     <form class="compose" id="item-form" method="dialog">
       <h2 id="form-title">要望を書く</h2>
       <label class="field">どのアプリ？
-        <input class="text-field" type="text" id="item-app" list="app-options" maxlength="60" required placeholder="例: VoiceFix">
-        <datalist id="app-options"></datalist>
+        <select class="text-field" id="item-app-select"></select>
+      </label>
+      <!-- 一覧にないアプリを選んだときだけ、名前を入れる欄を出す -->
+      <label class="field" id="item-app-new" hidden>新しいアプリの名前
+        <input class="text-field" type="text" id="item-app" maxlength="60" placeholder="例: VoiceFix">
       </label>
       <label class="field" for="item-body">内容（どの画面で、何が、どうなってほしいか）</label>
       <div class="input-with-mic">
