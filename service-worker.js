@@ -1,5 +1,5 @@
 // オフラインでも開けるように画面のファイルを保存しておく
-const CACHE_NAME = 'request-board-v1';
+const CACHE_NAME = 'request-board-v2';
 const APP_FILES = ['./', 'index.html', 'style.css', 'app.js', 'manifest.json', 'icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -16,11 +16,12 @@ self.addEventListener('activate', (event) => {
 });
 
 // 新しい版をすぐ反映できるよう、まず通信を試し、だめなら保存済みのものを返す
+// （ブラウザの一時保存も使わず、毎回サーバーに新しい版があるか確かめる）
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-cache' })
       .then((response) => {
         const copy = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
