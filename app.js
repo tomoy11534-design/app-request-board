@@ -69,6 +69,7 @@ function isUnread(item) {
 const state = {
   items: [],
   replies: [],
+  apps: [], // 登録したアプリ（名前とURL）
   loaded: false,
   loading: false,
   appFilter: 'all',
@@ -112,6 +113,7 @@ function errorMessage(error) {
   if (code === 'network') return '通信できませんでした。電波のよいところで、もう一度試してください。';
   if (code === 'invalid_passphrase') return '合言葉がちがいます。';
   if (code === 'bad_response') return '送り先から正しい返事がありませんでした。Apps Script の公開設定を確かめてください。';
+  if (code === 'unknown_action' || code === 'old_script') return 'Apps Script が古いままです。新しい gas/code.gs を貼って、新しいバージョンでデプロイしてください。';
   return `うまくいきませんでした（${code || error}）。少し待ってから、もう一度試してください。`;
 }
 
@@ -125,6 +127,7 @@ async function refresh({ quiet = false } = {}) {
     const data = await callApi('list');
     state.items = data.items;
     state.replies = data.replies;
+    state.apps = data.apps || [];
     // 初めて開いた端末では、これまでの分を既読として始める
     if (seen === null) {
       seen = {};
@@ -199,23 +202,28 @@ function titleOf(item) {
   return first.length > 50 ? first.slice(0, 50) + '…' : first;
 }
 
+// 登録したアプリと、要望に書かれたアプリをまとめる
 function appNames() {
-  return [...new Set(state.items.map((item) => item.app))].sort((a, b) => a.localeCompare(b, 'ja'));
+  const names = [...state.apps.map((app) => app.name), ...state.items.map((item) => item.app)];
+  return [...new Set(names)].sort((a, b) => a.localeCompare(b, 'ja'));
 }
+
+const findApp = (name) => state.apps.find((app) => app.name === name);
 
 function renderFilters() {
   const appBox = $('app-filter');
   appBox.innerHTML = '';
   const names = appNames();
-  // アプリが1つしかないときは絞り込みを出さない
-  appBox.hidden = names.length < 2;
-  if (state.appFilter !== 'all' && !names.includes(state.appFilter)) state.appFilter = 'all';
+  appBox.hidden = names.length === 0;
+  if (state.loaded && state.appFilter !== 'all' && !names.includes(state.appFilter)) state.appFilter = 'all';
   [['all', 'すべてのアプリ'], ...names.map((name) => [name, name])].forEach(([value, label]) => {
     appBox.append(makeChip(label, state.appFilter === value, () => {
       state.appFilter = value;
       render();
     }));
   });
+
+  renderAppCard();
 
   const inApp = state.items.filter(matchesApp);
   const statusBox = $('status-filter');
@@ -231,6 +239,30 @@ function renderFilters() {
       render();
     }));
   });
+}
+
+// 絞り込み中のアプリの名前と、開くリンク
+function renderAppCard() {
+  const card = $('app-card');
+  card.innerHTML = '';
+  card.hidden = state.appFilter === 'all';
+  if (card.hidden) return;
+  const app = findApp(state.appFilter);
+  card.append(el('strong', 'app-card-name', state.appFilter));
+  if (app && app.url) card.append(appLink(app, 'アプリを開く ↗'));
+  else card.append(el('span', 'muted', 'URLは未登録'));
+  const edit = el('button', 'text-button', app && app.url ? 'URLを変更' : 'URLを登録');
+  edit.type = 'button';
+  edit.addEventListener('click', () => openAppForm(state.appFilter));
+  card.append(edit);
+}
+
+function appLink(app, label) {
+  const link = el('a', 'app-link', label);
+  link.href = app.url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  return link;
 }
 
 function makeChip(label, pressed, onClick) {
@@ -346,7 +378,11 @@ function renderDetail() {
   if (!item) return;
 
   const head = el('div', 'detail-head');
-  head.append(el('span', 'app-tag', item.app));
+  const appInfo = el('span', 'detail-app');
+  appInfo.append(el('span', 'app-tag', item.app));
+  const app = findApp(item.app);
+  if (app && app.url) appInfo.append(appLink(app, '開く ↗'));
+  head.append(appInfo);
   const statusLabel = el('label', 'status-select');
   statusLabel.append('状態 ');
   const select = document.createElement('select');
@@ -745,6 +781,57 @@ async function submitSetup() {
   }
 }
 
+// ===== アプリの登録 =====
+function openAppForm(name = '') {
+  const app = findApp(name);
+  $('app-name').value = name;
+  $('app-url').value = app ? app.url : '';
+  $('app-dialog-title').textContent = name ? 'アプリのURLを登録' : 'アプリを登録';
+  $('app-dialog').showModal();
+  (name ? $('app-url') : $('app-name')).focus();
+}
+
+// http/https のアドレスだけを受け付ける（空ならURLなし、形がおかしければ null）
+function cleanUrl(value) {
+  let url = value.trim();
+  if (!url) return '';
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  try {
+    return new URL(url).href;
+  } catch {
+    return null;
+  }
+}
+
+async function submitApp() {
+  if (sending) return;
+  const name = $('app-name').value.trim();
+  const url = cleanUrl($('app-url').value);
+  if (!name) {
+    toast('アプリ名を入れてください');
+    return;
+  }
+  if (url === null) {
+    toast('URLの形が正しくありません。https:// から始まるアドレスを入れてください', 4000);
+    return;
+  }
+  const button = $('app-submit');
+  setBusy(button, true, '登録しています…');
+  try {
+    const data = await callApi('saveApp', { name, url, author: myName() });
+    if (!data.app) throw new ApiError('old_script');
+    state.apps = [...state.apps.filter((app) => app.name !== name), data.app];
+    state.appFilter = name;
+    $('app-dialog').close();
+    toast(`「${name}」を登録しました`);
+    render();
+  } catch (error) {
+    toast(errorMessage(error), 4000);
+  } finally {
+    setBusy(button, false, '登録する');
+  }
+}
+
 // ===== 要望を書くフォーム =====
 function openForm() {
   // アドレスの ?app= か、前回書いたアプリを最初から入れておく
@@ -758,6 +845,12 @@ function openForm() {
 // ===== イベント登録 =====
 function setupEvents() {
   $('open-form').addEventListener('click', openForm);
+  $('open-app-form').addEventListener('click', () => openAppForm());
+  $('app-cancel').addEventListener('click', () => $('app-dialog').close());
+  $('app-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    submitApp();
+  });
   $('form-cancel').addEventListener('click', () => {
     if (dictation.want) stopDictation();
     formDialog.close();

@@ -269,6 +269,53 @@ select {
   font-weight: 700;
 }
 
+/* ===== アプリの登録・リンク ===== */
+.add-app-button {
+  margin-top: 4px;
+  padding: 0 4px;
+  color: var(--color-accent-strong);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.app-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.app-card-name {
+  overflow-wrap: anywhere;
+}
+
+.app-card .text-button {
+  min-height: 40px;
+  padding: 0 4px;
+  font-size: 14px;
+}
+
+.app-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  color: var(--color-accent-strong);
+  font-weight: 700;
+}
+
+.detail-app {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
 /* ===== 一覧 ===== */
 .item-list {
   display: flex;

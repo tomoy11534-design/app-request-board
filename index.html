@@ -32,6 +32,11 @@
       <button class="primary-button" id="open-form" type="button">＋ 要望を書く</button>
 
       <div class="filter-group" id="app-filter" role="group" aria-label="アプリで絞り込む"></div>
+      <button class="text-button add-app-button" id="open-app-form" type="button">＋ アプリを登録</button>
+
+      <!-- 絞り込み中のアプリ：URLを開く・変更する -->
+      <div class="app-card" id="app-card" hidden></div>
+
       <div class="filter-group" id="status-filter" role="group" aria-label="状態で絞り込む"></div>
 
       <div class="item-list" id="item-list" aria-live="polite"></div>
@@ -86,6 +91,24 @@
       <div class="compose-actions">
         <button class="text-button" id="form-cancel" type="button">やめる</button>
         <button class="primary-button" id="item-submit" type="submit" value="submit">書き残す</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- アプリの登録（相手にも見える） -->
+  <dialog class="sheet" id="app-dialog" aria-labelledby="app-dialog-title">
+    <form class="compose" id="app-form" method="dialog">
+      <h2 id="app-dialog-title">アプリを登録</h2>
+      <p class="muted">登録したアプリは、相手の画面にも出ます。URL を入れておくと、ボードからそのアプリを開けます。</p>
+      <label class="field">アプリ名
+        <input class="text-field" type="text" id="app-name" maxlength="60" required placeholder="例: VoiceFix">
+      </label>
+      <label class="field">URL（なくてもOK）
+        <input class="text-field" type="text" id="app-url" maxlength="500" inputmode="url" placeholder="https://…">
+      </label>
+      <div class="compose-actions">
+        <button class="text-button" id="app-cancel" type="button">やめる</button>
+        <button class="primary-button" id="app-submit" type="submit" value="submit">登録する</button>
       </div>
     </form>
   </dialog>
