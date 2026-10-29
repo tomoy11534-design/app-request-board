@@ -741,3 +741,39 @@ select {
   font-size: 15px;
   transform: translateX(-50%);
 }
+
+/* お知らせの横の「取り消す」 */
+.toast:has(.toast-action) {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.toast-action {
+  min-height: 44px;
+  margin: -8px -8px -8px 12px;
+  padding: 0 12px;
+  border: none;
+  background: none;
+  color: var(--color-bg);
+  font: inherit;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+/* 自分が書いてすぐの要望・返事の「取り消す」 */
+.undo-button {
+  min-height: 32px;
+  margin-left: 8px;
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  font: inherit;
+  text-decoration: underline;
+}
+
+.undo-button[data-confirm] {
+  color: var(--color-new);
+  font-weight: bold;
+}

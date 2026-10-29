@@ -2,7 +2,7 @@
 
 // ===== 設定 =====
 // Google Apps Script のウェブアプリURL（docs/setup.md の手順で取得して貼り付ける）
-const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycby4fNhtBGG9Zl5ac9odzbXnl_-VIwxm1A35BAJebrNfWEsV0qyOPQbTZoSKwy2WIqVfQQ/exec';
+const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbz-5wsPbWHagg_SRyBw1ix7wDmv33HhNCm3jH9el3LPhrdEiQkeMkOa5vkDksgL8_ASRg/exec';
 
 const STATUSES = ['未着手', '対応中', '確認待ち', '完了'];
 const MAX_IMAGES = 6;
@@ -12,6 +12,12 @@ const IMAGE_MAX_SIDE = 1280;
 const REFRESH_INTERVAL = 60000;
 // 音声入力で何も聞き取れない状態がこの時間続いたら自動で止める（ミリ秒）
 const SILENCE_TIMEOUT = 15000;
+// 書いた本人が要望・返事を取り消せる時間（ミリ秒）
+const UNDO_LIMIT = 10 * 60 * 1000;
+// 送った直後の「取り消す」を出しておく時間（ミリ秒）
+const UNDO_TOAST_MS = 8000;
+// 取り消しで Apps Script から返る理由（そのまま見せる）
+const UNDO_ERRORS = ['自分が書いたものだけ取り消せます', '取り消せる時間を過ぎました', '返事がついたので取り消せません'];
 
 const NAME_KEY = 'board-name';
 const PASS_KEY = 'board-passphrase';
@@ -113,6 +119,7 @@ function errorMessage(error) {
   if (code === 'network') return '通信できませんでした。電波のよいところで、もう一度試してください。';
   if (code === 'invalid_passphrase') return '合言葉がちがいます。';
   if (code === 'bad_response') return '送り先から正しい返事がありませんでした。Apps Script の公開設定を確かめてください。';
+  if (UNDO_ERRORS.includes(code)) return code + '。';
   if (code === 'unknown_action' || code === 'old_script') return 'Apps Script が古いままです。新しい gas/code.gs を貼って、新しいバージョンでデプロイしてください。';
   return `うまくいきませんでした（${code || error}）。少し待ってから、もう一度試してください。`;
 }
@@ -165,9 +172,19 @@ function showBanner(message) {
 }
 
 let toastTimer = null;
-function toast(message, ms = 2400) {
+// action を渡すと、お知らせの横にボタンを出す（例: 送った直後の「取り消す」）
+function toast(message, ms = 2400, action = null) {
   const box = $('toast');
   box.textContent = message;
+  if (action) {
+    const button = el('button', 'toast-action', action.label);
+    button.type = 'button';
+    button.addEventListener('click', () => {
+      box.hidden = true;
+      action.onClick();
+    });
+    box.append(button);
+  }
   box.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (box.hidden = true), ms);
@@ -419,12 +436,9 @@ function renderDetail() {
   statusLabel.append(select);
   head.append(statusLabel);
 
-  box.append(
-    head,
-    el('p', 'detail-body', item.body),
-    imageGrid(item.images),
-    el('p', 'detail-who', `${item.createdBy}が ${formatTime(item.createdAt)} に書きました`),
-  );
+  const who = el('p', 'detail-who', `${item.createdBy}が ${formatTime(item.createdAt)} に書きました`);
+  if (canUndo(item.createdBy, item.createdAt)) who.append(undoButton(() => undoItem(item)));
+  box.append(head, el('p', 'detail-body', item.body), imageGrid(item.images), who);
 
   const replies = state.replies
     .filter((reply) => reply.itemId === item.id)
@@ -435,7 +449,9 @@ function renderDetail() {
   replies.forEach((reply) => {
     const message = el('div', reply.system ? 'message is-system' : 'message');
     if (reply.author === myName() && !reply.system) message.classList.add('is-mine');
-    message.append(el('div', 'message-head', `${reply.author}・${formatTime(reply.at)}`));
+    const messageHead = el('div', 'message-head', `${reply.author}・${formatTime(reply.at)}`);
+    if (!reply.system && canUndo(reply.author, reply.at)) messageHead.append(undoButton(() => undoReply(reply)));
+    message.append(messageHead);
     if (reply.text) message.append(el('p', 'message-text', reply.text));
     const grid = imageGrid(reply.images);
     if (grid) message.append(grid);
@@ -598,7 +614,7 @@ async function submitItem() {
     pendingImages.item = [];
     renderPendingImages('item');
     formDialog.close();
-    toast('書き残しました');
+    toast('書き残しました', UNDO_TOAST_MS, { label: '取り消す', onClick: () => undoItem(data.item) });
     render();
   } catch (error) {
     toast(errorMessage(error), 4000);
@@ -617,16 +633,74 @@ async function submitReply() {
   setBusy(button, true, pendingImages.reply.length ? '画像を送っています…' : '送っています…');
   try {
     const images = await uploadPendingImages('reply');
-    await callApi('reply', { itemId: item.id, text, author: myName(), images });
+    const data = await callApi('reply', { itemId: item.id, text, author: myName(), images });
     $('reply-text').value = '';
     pendingImages.reply = [];
     renderPendingImages('reply');
-    toast('送りました');
+    toast('送りました', UNDO_TOAST_MS, { label: '取り消す', onClick: () => undoReply(data.reply) });
     await refresh({ quiet: true });
   } catch (error) {
     toast(errorMessage(error), 4000);
   } finally {
     setBusy(button, false, '返事を送る');
+  }
+}
+
+// ===== 取り消し =====
+// 自分が書いて、まだ時間がたっていないものだけ取り消せる
+function canUndo(author, at) {
+  return Boolean(myName()) && author === myName() && Date.now() - at < UNDO_LIMIT;
+}
+
+// 間違って押さないよう、1回目は「本当に取り消す？」に変わり、もう1回押すと取り消す
+function undoButton(onConfirm) {
+  const button = el('button', 'undo-button', '取り消す');
+  button.type = 'button';
+  let timer = null;
+  button.addEventListener('click', () => {
+    if (button.dataset.confirm) {
+      clearTimeout(timer);
+      button.disabled = true;
+      onConfirm();
+      return;
+    }
+    button.dataset.confirm = '1';
+    button.textContent = '本当に取り消す？';
+    timer = setTimeout(() => {
+      delete button.dataset.confirm;
+      button.textContent = '取り消す';
+    }, 4000);
+  });
+  return button;
+}
+
+async function undoItem(item) {
+  try {
+    await callApi('deleteItem', { itemId: item.id, author: myName() });
+    state.items = state.items.filter((i) => i.id !== item.id);
+    state.replies = state.replies.filter((reply) => reply.itemId !== item.id);
+    toast('要望を取り消しました');
+    // 詳細を開いていたら一覧に戻す
+    if (selectedId() === item.id) {
+      history.replaceState(null, '', location.pathname + location.search);
+      showView();
+    } else {
+      render();
+    }
+  } catch (error) {
+    toast(errorMessage(error), 4000);
+    render();
+  }
+}
+
+async function undoReply(reply) {
+  try {
+    await callApi('deleteReply', { replyId: reply.id, author: myName() });
+    toast('返事を取り消しました');
+    await refresh({ quiet: true });
+  } catch (error) {
+    toast(errorMessage(error), 4000);
+    render();
   }
 }
 
