@@ -1096,4 +1096,12 @@ select {
   .compose h2 {
     font-size: 17px;
   }
+
+  /* iPhone は入力欄の文字が16pxより小さいと、押したときに画面を拡大してはみ出して見えるので、入力欄だけ16pxにする */
+  input,
+  select,
+  textarea,
+  .status-select select {
+    font-size: 16px;
+  }
 }
