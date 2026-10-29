@@ -777,3 +777,11 @@ select {
   color: var(--color-new);
   font-weight: bold;
 }
+
+/* 送る欄の下の「取り消せます」の説明 */
+.undo-hint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  text-align: right;
+}

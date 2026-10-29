@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="要望ボード">
   <!-- 画面とプログラムの版をそろえるため、直したら ?v= の数字を上げる -->
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <!-- ヘッダー：アプリ名、自分の名前、読み込み直し -->
@@ -66,6 +66,7 @@
           </label>
           <button class="primary-button" id="reply-submit" type="submit">返事を送る</button>
         </div>
+        <p class="undo-hint">間違えても、送ってから10分間は「取り消す」で消せます</p>
       </form>
     </section>
   </main>
@@ -96,6 +97,7 @@
         <button class="text-button" id="form-cancel" type="button">やめる</button>
         <button class="primary-button" id="item-submit" type="submit" value="submit">書き残す</button>
       </div>
+      <p class="undo-hint">間違えても、送ってから10分間は「取り消す」で消せます（相手が返事をする前まで）</p>
     </form>
   </dialog>
 
@@ -143,6 +145,6 @@
 
   <div class="toast" id="toast" role="status" hidden></div>
 
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
