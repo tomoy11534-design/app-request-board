@@ -900,3 +900,23 @@ select {
   color: var(--color-muted);
   font-size: 14px;
 }
+
+/* 状態の絞り込み（未完了は青、新着は赤、完了は緑。選んでいるものは塗りつぶす） */
+.chip[data-filter="open"] { --chip-color: var(--status-doing); --chip-soft: var(--status-doing-soft); }
+.chip[data-filter="unread"] { --chip-color: var(--color-new); --chip-soft: var(--color-new-soft); }
+.chip[data-filter="done"] { --chip-color: var(--status-done); --chip-soft: var(--status-done-soft); }
+
+.chip[data-filter="open"],
+.chip[data-filter="unread"],
+.chip[data-filter="done"] {
+  border-color: var(--chip-color);
+  background: var(--chip-soft);
+  color: var(--chip-color);
+  font-weight: 700;
+}
+
+.chip[data-filter][aria-pressed="true"] {
+  border-color: var(--chip-color, var(--color-text));
+  background: var(--chip-color, var(--color-text));
+  color: var(--color-surface);
+}

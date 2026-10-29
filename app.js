@@ -248,16 +248,19 @@ function renderFilters() {
   const inApp = state.items.filter(matchesApp);
   const statusBox = $('status-filter');
   statusBox.innerHTML = '';
+  // 絞り込みも、色と絵文字で見分けられるようにする（色は style.css の data-filter）
   [
-    ['open', '未完了', inApp.filter((i) => i.status !== '完了').length],
-    ['unread', '新着', inApp.filter(isUnread).length],
-    ['done', '完了', inApp.filter((i) => i.status === '完了').length],
+    ['open', '📋 未完了', inApp.filter((i) => i.status !== '完了').length],
+    ['unread', '🔔 新着', inApp.filter(isUnread).length],
+    ['done', '✅ 完了', inApp.filter((i) => i.status === '完了').length],
     ['all', 'すべて', inApp.length],
   ].forEach(([value, label, count]) => {
-    statusBox.append(makeChip(`${label} ${count}`, state.statusFilter === value, () => {
+    const chip = makeChip(`${label} ${count}`, state.statusFilter === value, () => {
       state.statusFilter = value;
       render();
-    }));
+    });
+    chip.dataset.filter = value;
+    statusBox.append(chip);
   });
 }
 
