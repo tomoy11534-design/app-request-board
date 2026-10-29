@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="要望ボード">
   <!-- 画面とプログラムの版をそろえるため、直したら ?v= の数字を上げる -->
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
   <!-- ヘッダー：アプリ名、自分の名前、読み込み直し -->
@@ -30,6 +30,8 @@
     <!-- 一覧画面 -->
     <section class="view" id="view-list">
       <p class="lead">アプリへの要望を書き残して、それぞれの都合のいいときに返事をする場所です。</p>
+      <!-- 前回見たあとに相手が書いた・更新したものをまとめて知らせる -->
+      <div class="news-card" id="news-card" role="status" hidden></div>
       <button class="primary-button" id="open-form" type="button">＋ 要望を書く</button>
 
       <div class="filter-group" id="app-filter" role="group" aria-label="アプリで絞り込む"></div>
@@ -145,6 +147,6 @@
 
   <div class="toast" id="toast" role="status" hidden></div>
 
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

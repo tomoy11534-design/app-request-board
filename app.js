@@ -82,6 +82,7 @@ const state = {
   statusFilter: 'open',
   editing: null, // 直している途中の要望・返事 { kind, id, draft }
   seenBefore: 0, // 開いている要望を、前に見た時刻
+  newsClosed: new Set(), // 「前回からの新着」を閉じたときに出ていた要望（新しい動きが増えたらまた出す）
 };
 
 // ===== 通信（Google Apps Script） =====
@@ -160,6 +161,7 @@ async function refresh({ quiet = false } = {}) {
 
 // ===== 表示 =====
 function render() {
+  renderNews();
   renderFilters();
   renderList();
   renderDetail();
@@ -345,6 +347,61 @@ function renderList() {
 
 // 状態は色と絵文字の両方で見分けられるようにする
 const STATUS_ICONS = { '未着手': '⏳', '対応中': '🔧', '確認待ち': '👀', '完了': '✅' };
+
+// ===== 前回からの新着のお知らせ =====
+// 開いたときに、前回見たあとに相手が書いた・更新した要望を一覧の上にまとめて出す
+const NEWS_ROWS = 3;
+
+function renderNews() {
+  const card = $('news-card');
+  card.innerHTML = '';
+  const unread = state.items.filter(isUnread).sort((a, b) => b.updatedAt - a.updatedAt);
+  const closed = unread.every((item) => state.newsClosed.has(`${item.id}@${item.updatedAt}`));
+  card.hidden = !state.loaded || unread.length === 0 || closed;
+  if (card.hidden) return;
+
+  const added = unread.filter((item) => !(seen && seen[item.id])).length;
+  const head = el('div', 'news-head');
+  head.append(el('strong', 'news-title', `🔔 前回見たあとに ${unread.length}件 の新しい動きがあります`));
+  const close = el('button', 'news-close', '×');
+  close.type = 'button';
+  close.setAttribute('aria-label', 'お知らせを閉じる');
+  close.addEventListener('click', () => {
+    unread.forEach((item) => state.newsClosed.add(`${item.id}@${item.updatedAt}`));
+    renderNews();
+  });
+  head.append(close);
+
+  const parts = [];
+  if (added) parts.push(`🆕 新しい要望 ${added}件`);
+  if (unread.length - added) parts.push(`💬 更新あり ${unread.length - added}件`);
+  card.append(head, el('p', 'news-summary', parts.join('　')));
+
+  // 新しいものから数件だけ、押せばすぐ開けるように並べる
+  const list = el('div', 'news-list');
+  unread.slice(0, NEWS_ROWS).forEach((item) => {
+    const row = el('button', 'news-row');
+    row.type = 'button';
+    row.append(
+      el('span', 'news-row-title', `${item.app}：${titleOf(item)}`),
+      el('span', 'news-row-note', `${item.updatedBy}・${formatTime(item.updatedAt)}　${item.lastNote}`),
+    );
+    row.addEventListener('click', () => openItem(item.id));
+    list.append(row);
+  });
+  card.append(list);
+
+  if (unread.length > NEWS_ROWS && state.statusFilter !== 'unread') {
+    const all = el('button', 'secondary-button', `新着 ${unread.length}件 をすべて見る`);
+    all.type = 'button';
+    all.addEventListener('click', () => {
+      state.statusFilter = 'unread';
+      state.appFilter = 'all';
+      render();
+    });
+    card.append(all);
+  }
+}
 
 function statusPill(status) {
   const pill = el('span', 'status-pill', `${STATUS_ICONS[status] || ''} ${status}`.trim());

@@ -833,3 +833,70 @@ select {
   gap: 8px;
   margin: 6px 0;
 }
+
+/* 前回見たあとの新着をまとめたお知らせ */
+.news-card {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 2px solid var(--color-new);
+  border-radius: var(--radius);
+  background: var(--color-new-soft);
+}
+
+.news-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.news-title {
+  font-size: 17px;
+}
+
+.news-close {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -10px -10px 0 0;
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  font-size: 22px;
+}
+
+.news-summary {
+  margin: 0;
+  font-weight: 700;
+}
+
+.news-list {
+  display: grid;
+  gap: 6px;
+}
+
+.news-row {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.news-row-title {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.news-row-note {
+  color: var(--color-muted);
+  font-size: 14px;
+}
