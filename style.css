@@ -14,6 +14,11 @@
   --status-doing: #2d5c8f;
   --status-review: #9a6a00;
   --status-done: #3d7a3a;
+  --status-todo-soft: #eceff0;
+  --status-doing-soft: #e2ecf8;
+  --status-review-soft: #fbf0d6;
+  --status-done-soft: #e1f0df;
+  --color-new-soft: #fdece8;
   --radius: 14px;
   color-scheme: light;
 }
@@ -35,6 +40,11 @@
     --status-doing: #8db6e6;
     --status-review: #e2b85a;
     --status-done: #8fcb86;
+    --status-todo-soft: #262e2a;
+    --status-doing-soft: #1d2b3b;
+    --status-review-soft: #3a3020;
+    --status-done-soft: #1f3320;
+    --color-new-soft: #3a231e;
     color-scheme: dark;
   }
 }
@@ -54,6 +64,11 @@
   --status-doing: #8db6e6;
   --status-review: #e2b85a;
   --status-done: #8fcb86;
+  --status-todo-soft: #262e2a;
+  --status-doing-soft: #1d2b3b;
+  --status-review-soft: #3a3020;
+  --status-done-soft: #1f3320;
+  --color-new-soft: #3a231e;
   color-scheme: dark;
 }
 
@@ -340,6 +355,17 @@ select {
   border-color: var(--color-muted);
 }
 
+/* 相手が新しく書いた要望・更新した要望は、左の太い線と背景色で目立たせる */
+.item-card.is-added,
+.item-card.is-updated {
+  border-color: var(--color-new);
+  border-left-width: 6px;
+}
+
+.item-card.is-added {
+  background: var(--color-new-soft);
+}
+
 .item-title {
   display: flex;
   align-items: center;
@@ -356,11 +382,11 @@ select {
 
 .new-tag {
   flex: none;
-  padding: 0 6px;
+  padding: 1px 8px;
   border-radius: 4px;
   background: var(--color-new);
-  color: #fff;
-  font-size: 12px;
+  color: var(--color-surface);
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.05em;
 }
@@ -392,19 +418,22 @@ select {
   overflow-wrap: anywhere;
 }
 
+/* 状態のバッジ（色付きの背景＋絵文字で見分ける） */
 .status-pill {
-  padding: 0 10px;
+  padding: 2px 10px;
   border: 1px solid currentColor;
   border-radius: 999px;
+  background: var(--status-soft);
+  color: var(--status-color);
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
 }
 
-.status-pill[data-status="未着手"] { color: var(--status-todo); }
-.status-pill[data-status="対応中"] { color: var(--status-doing); }
-.status-pill[data-status="確認待ち"] { color: var(--status-review); }
-.status-pill[data-status="完了"] { color: var(--status-done); }
+[data-status="未着手"] { --status-color: var(--status-todo); --status-soft: var(--status-todo-soft); }
+[data-status="対応中"] { --status-color: var(--status-doing); --status-soft: var(--status-doing-soft); }
+[data-status="確認待ち"] { --status-color: var(--status-review); --status-soft: var(--status-review-soft); }
+[data-status="完了"] { --status-color: var(--status-done); --status-soft: var(--status-done-soft); }
 
 .empty {
   display: flex;
@@ -452,9 +481,11 @@ select {
 .status-select select {
   min-height: 40px;
   padding: 4px 8px;
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--status-color, var(--color-border));
   border-radius: 8px;
-  background: var(--color-surface);
+  background: var(--status-soft, var(--color-surface));
+  color: var(--status-color, var(--color-text));
+  font-weight: 700;
 }
 
 .detail-body {
@@ -494,6 +525,16 @@ select {
   align-self: flex-end;
   border-color: transparent;
   background: var(--color-accent-soft);
+}
+
+/* 前に開いたあとに相手が書いた返事 */
+.message.is-new {
+  border: 2px solid var(--color-new);
+  background: var(--color-new-soft);
+}
+
+.message-head .new-tag {
+  margin-right: 6px;
 }
 
 .message.is-system {
@@ -784,4 +825,11 @@ select {
   color: var(--color-muted);
   font-size: 14px;
   text-align: right;
+}
+
+/* 要望・返事を直す欄 */
+.edit-box {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0;
 }

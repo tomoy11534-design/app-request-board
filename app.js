@@ -16,8 +16,8 @@ const SILENCE_TIMEOUT = 15000;
 const UNDO_LIMIT = 10 * 60 * 1000;
 // 送った直後の「取り消す」を出しておく時間（ミリ秒）
 const UNDO_TOAST_MS = 8000;
-// 取り消しで Apps Script から返る理由（そのまま見せる）
-const UNDO_ERRORS = ['自分が書いたものだけ取り消せます', '取り消せる時間を過ぎました', '返事がついたので取り消せません'];
+// 取り消し・編集で Apps Script から返る理由（そのまま見せる）
+const UNDO_ERRORS = ['自分が書いたものだけ取り消せます', '取り消せる時間を過ぎました', '返事がついたので取り消せません', '自分が書いたものだけ直せます'];
 
 const NAME_KEY = 'board-name';
 const PASS_KEY = 'board-passphrase';
@@ -80,6 +80,8 @@ const state = {
   loading: false,
   appFilter: 'all',
   statusFilter: 'open',
+  editing: null, // 直している途中の要望・返事 { kind, id, draft }
+  seenBefore: 0, // 開いている要望を、前に見た時刻
 };
 
 // ===== 通信（Google Apps Script） =====
@@ -322,9 +324,13 @@ function renderList() {
     const card = el('button', 'item-card');
     card.type = 'button';
     card.addEventListener('click', () => openItem(item.id));
+    // 相手が新しく書いた要望と、返事などで更新された要望を、色と言葉で分けて目立たせる
+    const unread = isUnread(item);
+    const added = unread && !(seen && seen[item.id]);
+    if (unread) card.classList.add(added ? 'is-added' : 'is-updated');
 
     const title = el('span', 'item-title');
-    if (isUnread(item)) title.append(el('span', 'new-tag', 'NEW'));
+    if (unread) title.append(el('span', 'new-tag', added ? '🆕 新しい要望' : '💬 更新あり'));
     title.append(el('span', 'item-title-text', titleOf(item)));
 
     const meta = el('span', 'item-meta');
@@ -337,8 +343,11 @@ function renderList() {
   });
 }
 
+// 状態は色と絵文字の両方で見分けられるようにする
+const STATUS_ICONS = { '未着手': '⏳', '対応中': '🔧', '確認待ち': '👀', '完了': '✅' };
+
 function statusPill(status) {
-  const pill = el('span', 'status-pill', status);
+  const pill = el('span', 'status-pill', `${STATUS_ICONS[status] || ''} ${status}`.trim());
   pill.dataset.status = status;
   return pill;
 }
@@ -403,13 +412,19 @@ function showView() {
     // 見つからない要望なら一覧に戻す
     history.replaceState(null, '', location.pathname + location.search);
   }
+  // 開く前に見た時刻を覚えておき、それより新しい相手の返事に印をつける
+  // （読み込み前で、前に見た時刻がわからないときは印をつけない）
+  state.seenBefore = item && seen ? seen[item.id] || 0 : Infinity;
   if (item) markSeen(item);
   if (dictation.want) stopDictation();
+  state.editing = null;
   render();
   window.scrollTo(0, 0);
 }
 
 function renderDetail() {
+  // 直している途中は、読み込み直しで書きかけが消えないよう描き直さない
+  if (state.editing && document.getElementById('edit-text')) return;
   const item = selectedItem();
   const box = $('detail');
   const thread = $('thread');
@@ -424,10 +439,11 @@ function renderDetail() {
   if (app && app.url) appInfo.append(appLink(app, '開く ↗'));
   head.append(appInfo);
   const statusLabel = el('label', 'status-select');
+  statusLabel.dataset.status = item.status;
   statusLabel.append('状態 ');
   const select = document.createElement('select');
   STATUSES.forEach((status) => {
-    const option = el('option', '', status);
+    const option = el('option', '', `${STATUS_ICONS[status]} ${status}`);
     option.value = status;
     option.selected = status === item.status;
     select.append(option);
@@ -436,9 +452,11 @@ function renderDetail() {
   statusLabel.append(select);
   head.append(statusLabel);
 
-  const who = el('p', 'detail-who', `${item.createdBy}が ${formatTime(item.createdAt)} に書きました`);
+  const who = el('p', 'detail-who', `${item.createdBy}が ${formatTime(item.createdAt)} に書きました${item.editedAt ? '（編集済み）' : ''}`);
+  if (isMine(item.createdBy)) who.append(editButton('item', item.id, item.body));
   if (canUndo(item.createdBy, item.createdAt)) who.append(undoButton(() => undoItem(item)));
-  box.append(head, el('p', 'detail-body', item.body), imageGrid(item.images), who);
+  const body = isEditing('item', item.id) ? editBox() : el('p', 'detail-body', item.body);
+  box.append(head, body, imageGrid(item.images), who);
 
   const replies = state.replies
     .filter((reply) => reply.itemId === item.id)
@@ -449,10 +467,15 @@ function renderDetail() {
   replies.forEach((reply) => {
     const message = el('div', reply.system ? 'message is-system' : 'message');
     if (reply.author === myName() && !reply.system) message.classList.add('is-mine');
-    const messageHead = el('div', 'message-head', `${reply.author}・${formatTime(reply.at)}`);
+    const isNew = !reply.system && !isMine(reply.author) && Math.max(reply.at, reply.editedAt || 0) > state.seenBefore;
+    if (isNew) message.classList.add('is-new');
+    const messageHead = el('div', 'message-head', `${reply.author}・${formatTime(reply.at)}${reply.editedAt ? '（編集済み）' : ''}`);
+    if (isNew) messageHead.prepend(el('span', 'new-tag', 'NEW'));
+    if (!reply.system && isMine(reply.author)) messageHead.append(editButton('reply', reply.id, reply.text));
     if (!reply.system && canUndo(reply.author, reply.at)) messageHead.append(undoButton(() => undoReply(reply)));
     message.append(messageHead);
-    if (reply.text) message.append(el('p', 'message-text', reply.text));
+    if (isEditing('reply', reply.id)) message.append(editBox());
+    else if (reply.text) message.append(el('p', 'message-text', reply.text));
     const grid = imageGrid(reply.images);
     if (grid) message.append(grid);
     thread.append(message);
@@ -643,6 +666,75 @@ async function submitReply() {
     toast(errorMessage(error), 4000);
   } finally {
     setBusy(button, false, '返事を送る');
+  }
+}
+
+// ===== 編集 =====
+// 自分が書いたものは、いつでも文字を直せる（画像はそのまま）
+const isMine = (author) => Boolean(myName()) && author === myName();
+const isEditing = (kind, id) => Boolean(state.editing) && state.editing.kind === kind && state.editing.id === id;
+
+function editButton(kind, id, text) {
+  const button = el('button', 'undo-button', '編集');
+  button.type = 'button';
+  button.addEventListener('click', () => {
+    state.editing = { kind, id, draft: text };
+    renderDetail();
+    const input = $('edit-text');
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  });
+  return button;
+}
+
+function editBox() {
+  const box = el('div', 'edit-box');
+  const input = el('textarea', 'text-input');
+  input.id = 'edit-text';
+  input.rows = 4;
+  input.maxLength = 4000;
+  input.value = state.editing.draft;
+  input.setAttribute('aria-label', '内容を直す');
+  input.addEventListener('input', () => (state.editing.draft = input.value));
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) saveEdit(save);
+  });
+  const actions = el('div', 'compose-actions');
+  const cancel = el('button', 'text-button', 'やめる');
+  cancel.type = 'button';
+  cancel.addEventListener('click', () => {
+    state.editing = null;
+    renderDetail();
+  });
+  const save = el('button', 'primary-button', '直す');
+  save.type = 'button';
+  save.addEventListener('click', () => saveEdit(save));
+  actions.append(cancel, save);
+  box.append(input, actions);
+  return box;
+}
+
+async function saveEdit(button) {
+  if (sending) return;
+  const { kind, id, draft } = state.editing;
+  const text = draft.trim();
+  if (kind === 'item' && !text) {
+    toast('内容を入れてください');
+    return;
+  }
+  setBusy(button, true, '直しています…');
+  try {
+    if (kind === 'item') await callApi('editItem', { itemId: id, body: text, author: myName() });
+    else await callApi('editReply', { replyId: id, text, author: myName() });
+    state.editing = null;
+    sending = false;
+    toast('直しました');
+    await refresh({ quiet: true });
+    // 読み込み直しに失敗しても、編集の欄は閉じる
+    renderDetail();
+  } catch (error) {
+    toast(errorMessage(error), 4000);
+    setBusy(button, false, '直す');
   }
 }
 
