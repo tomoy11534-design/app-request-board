@@ -920,3 +920,180 @@ select {
   background: var(--chip-color, var(--color-text));
   color: var(--color-surface);
 }
+
+/* ===== スマホの幅（480px まで）：文字と余白を小さくして、一画面に多く見えるようにする ===== */
+@media (max-width: 480px) {
+  body {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .app-header {
+    padding: calc(6px + env(safe-area-inset-top)) 12px 6px;
+  }
+
+  .app-title {
+    font-size: 17px;
+  }
+
+  .name-button {
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .icon-button {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  .app-main {
+    padding: 4px 12px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .lead {
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+
+  .primary-button {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  /* 絞り込みは折り返さず、横にスクロールする1行にまとめる */
+  .filter-group {
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-top: 10px;
+    margin-inline: -12px;
+    padding-inline: 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .filter-group::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-group + .filter-group {
+    margin-top: 6px;
+  }
+
+  .chip {
+    flex: none;
+    min-height: 34px;
+    padding: 2px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .add-app-button {
+    min-height: 32px;
+    margin-top: 2px;
+    font-size: 13px;
+  }
+
+  .item-list {
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .item-card {
+    gap: 4px;
+    padding: 10px 12px;
+  }
+
+  .item-title {
+    font-size: 15px;
+  }
+
+  .item-meta,
+  .item-last,
+  .app-tag {
+    font-size: 12px;
+  }
+
+  .status-pill,
+  .new-tag {
+    font-size: 11px;
+  }
+
+  /* 前回からの新着のお知らせ */
+  .news-card {
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+  }
+
+  .news-title {
+    font-size: 14px;
+  }
+
+  .news-summary {
+    font-size: 13px;
+  }
+
+  .news-row {
+    padding: 6px 10px;
+  }
+
+  .news-row-title {
+    font-size: 13px;
+  }
+
+  .news-row-note {
+    font-size: 12px;
+  }
+
+  .news-close {
+    min-width: 36px;
+    min-height: 36px;
+    margin: -8px -8px 0 0;
+    font-size: 18px;
+  }
+
+  .news-card .secondary-button {
+    min-height: 36px;
+    font-size: 13px;
+  }
+
+  /* 詳細とやりとり */
+  .detail {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .detail-body {
+    font-size: 15px;
+  }
+
+  .detail-who,
+  .message-head,
+  .undo-hint {
+    font-size: 12px;
+  }
+
+  .status-select {
+    font-size: 13px;
+  }
+
+  .status-select select {
+    min-height: 34px;
+    font-size: 13px;
+  }
+
+  .section-title {
+    margin: 16px 0 6px;
+    font-size: 14px;
+  }
+
+  .message {
+    padding: 8px 12px;
+  }
+
+  .compose h2 {
+    font-size: 17px;
+  }
+}
